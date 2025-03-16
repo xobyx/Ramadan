@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="supported-color-schemes" content="light dark">
+<meta name="color-scheme" content="light dark">
+<meta name="dir" :content="layoutDirection">
+    <title>Ramadan Timer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@100..900&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.min.js"></script>
+    <script>
+    // Check for dark mode before the page loads to prevent flashing
+    if (localStorage.getItem('darkMode') === 'true' || 
+        (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    }
+    </script>
+    <style>
+        @font-face {
+            font-family: 'Noto Sans Arabic';
+            src: url('https://cdnjs.cloudflare.com/ajax/libs/noto-sans/2021-08-02/noto-sans-arabic/NotoSansArabic-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        .font-arabic {
+            font-family: 'Amiri', 'Noto Sans Arabic', serif;
+        }
+        .rtl {
+            direction: rtl;
+        }
+        .ltr {
+            direction: ltr;
+        }
+        
+        /* Smooth transitions */
+        .fade-transition {
+            transition: all 0.3s ease;
+        }
+        
+        /* Glassmorphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Custom animation for moon phases */
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px rgba(129, 140, 248, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(129, 140, 248, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(129, 140, 248, 0.5); }
+        }
+        
+        .moon-glow {
+            animation: glow 4s infinite;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .dark ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 text-slate-800 dark:text-slate-200 min-h-screen transition-colors duration-500 font-arabic" :class="{'rtl text-right': language === 'ar'}">
+    <div id="app" class="max-w-6xl mx-auto p-4 md:p-6">
+        <header class="flex justify-between items-center mb-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-xl shadow-sm p-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ language === 'en' ? 'Ramadan Timer' : 'مؤقت رمضان' }}</h1>
+            </div>
+            <div class="flex gap-3">
+                <button @click="toggleDarkMode" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 p-2 rounded-lg transition-all duration-300 hover:shadow-md">
+                    <span v-if="darkMode" class="block w-6 h-6">🌞</span><span v-else class="block w-6 h-6">🌜</span>
+                </button>
+                <button @click="toggleLanguage" class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2 rounded-lg transition-all duration-300 hover:shadow-md">
+                    {{ language === 'en' ? 'العربية' : 'English' }}
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Timer Card -->
+            <div class="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-slate-200 dark:border-slate-700">
+                <!-- Moon Phase -->
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600  p-8 flex flex-col items-center relative overflow-hidden">
+                    <!-- Decorative elements -->
+                    <div class="relative w-28 h-28 mb-5 moon-glow rounded-full">
+  <!-- Light side of moon (always visible) -->
+  <div class="w-28 h-28 rounded-full bg-gradient-to-r from-slate-100 to-white dark:from-slate-300 dark:to-white absolute"></div>
+  
+  <!-- Dark overlay with animated clip path -->
+  <div class="absolute inset-0 w-28 h-28 bg-indigo-900 dark:bg-slate-900 rounded-full" 
+       :style="moonPhaseStylex"></div>
+  
+  <!-- Subtle crater details -->
+  <div class="absolute inset-0 w-28 h-28 rounded-full opacity-10 dark:opacity-20" 
+       style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/FullMoon2010.jpg/800px-FullMoon2010.jpg'); background-size: cover;"></div>
+</div>
+                </div>
+
+                <div class="p-6 text-center">
+                    <div class="flex justify-center gap-4 items-center mb-4">
+                        <p class="text-slate-600 dark:text-slate-300">{{ language === 'en' ? currentDate : currentDateArabic }}</p>
+                        <div class="h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ language === 'en' ? hijriDate : hijriDateArabic }}</p>
+                    </div>
+                    
+                    <h2 class="text-xl font-bold mt-6 dark:text-slate-200 bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ language === 'en' ? countdownLabel : countdownLabelArabic }}</h2>
+                    
+                    <div class="flex justify-center gap-3 my-8">
+                        <div class="bg-gradient-to-b from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-purple-900/30 rounded-xl px-5 py-3 shadow-sm">
+                            <div class="text-4xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ countdownTime.hours }}</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ language === 'en' ? 'Hours' : 'ساعات' }}</div>  
+                        </div>
+                        <div class="text-2xl self-center text-slate-400 dark:text-slate-500 font-light">:</div>
+                        <div class="bg-gradient-to-b from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-purple-900/30 rounded-xl px-5 py-3 shadow-sm">
+                            <div class="text-4xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ countdownTime.minutes }}</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ language === 'en' ? 'Minutes' : 'دقائق' }}</div>
+                        </div>
+                        <div class="text-2xl self-center text-slate-400 dark:text-slate-500 font-light">:</div>
+                        <div class="bg-gradient-to-b from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-purple-900/30 rounded-xl px-5 py-3 shadow-sm">
+                            <div class="text-4xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ countdownTime.seconds }}</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ language === 'en' ? 'Seconds' : 'ثواني' }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-3 mb-3 overflow-hidden">
+                        <div class="bg-gradient-to-r h-3 rounded-full transition-all duration-500 relative" 
+                             :class="progressBarColor"
+                             :style="{width: `${progressPercentage}%`}">
+                            <div class="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_30%_107%,rgba(255,255,255,0.8)_0%,rgba(255,255,255,0)_80%)]"></div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">{{ progressPercentage.toFixed(1) }}% {{ language === 'en' ? 'Complete' : 'مكتمل' }}</p>
+                    
+                    <!-- Prayer Times -->
+                    <div class="grid grid-cols-2 gap-4 mt-8">
+                        <div class="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900">
+                            <div class="flex items-center justify-center mb-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                </svg>
+                                <h3 class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ language === 'en' ? 'Imsk Time' : 'وقت السحور' }}</h3>
+                            </div>
+                            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ prayerTimes.suhoor }}</div>
+                        </div>
+                        <div class="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900">
+                            <div class="flex items-center justify-center mb-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+                                </svg>
+                                <h3 class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ language === 'en' ? 'Iftar Time' : 'وقت الإفطار' }}</h3>
+                            </div>
+                            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ prayerTimes.iftar }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-xl p-5 mt-4 shadow-sm border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900">
+                        <div class="flex items-center justify-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ language === 'en' ? 'Fast Duration' : 'مدة الصيام' }}</h3>
+            </div>
+            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ language === 'en' ? fastDuration : fastDurationArabic }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Card -->
+<div class="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden p-6 transition-all duration-300 hover:shadow-xl border border-slate-200 dark:border-slate-700">
+    <div class="flex items-center mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <h2 class="text-xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ language === 'en' ? 'Location Settings' : 'إعدادات الموقع' }}</h2>
+    </div>
+    
+    <div class="space-y-5">
+        <div class="group">
+            <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{{ language === 'en' ? 'Calculation Method' : 'طريقة الحساب' }}</label>
+            <div class="relative">
+                <select v-model="calculationMethod" 
+                        class="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 focus:border-indigo-500 dark:focus:border-indigo-500 focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 pr-10 appearance-none transition-all duration-300">
+                    <option value="ISNA">{{ language === 'en' ? 'Islamic Society of North America' : 'الجمعية الإسلامية لأمريكا الشمالية' }}</option>
+                    <option value="MWL">{{ language === 'en' ? 'Muslim World League' : 'رابطة العالم الإسلامي' }}</option>
+                    <option value="MAKKAH">{{ language === 'en' ? 'Umm Al-Qura University, Makkah' : 'جامعة أم القرى، مكة' }}</option>
+                    <option value="EGYPT">{{ language === 'en' ? 'Egyptian General Authority' : 'الهيئة العامة المصرية' }}</option>
+                    <option value="KARACHI">{{ language === 'en' ? 'University of Islamic Sciences, Karachi' : 'جامعة العلوم الإسلامية، كراتشي' }}</option>
+                </select>
+                <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-500 dark:text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div class="group">
+            <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{{ language === 'en' ? 'Select City' : 'اختر المدينة' }}</label>
+            <div class="relative">
+                <select v-model="selectedCity" @change="handleCityChange"
+                        class="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 focus:border-indigo-500 dark:focus:border-indigo-500 focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 pr-10 appearance-none transition-all duration-300">
+                    <option value="auto">{{ language === 'en' ? 'Auto Detect' : 'كشف تلقائي' }}</option>
+                    <option value="alain">{{ language === 'en' ? 'Al-Ain, UAE' : 'العين، الإمارات' }}</option>
+                    <option value="mecca">{{ language === 'en' ? 'Mecca, Saudi Arabia' : 'مكة المكرمة، السعودية' }}</option>
+                    <option value="medina">{{ language === 'en' ? 'Medina, Saudi Arabia' : 'المدينة المنورة، السعودية' }}</option>
+                    <option value="riyadh">{{ language === 'en' ? 'Riyadh, Saudi Arabia' : 'الرياض، السعودية' }}</option>
+                    <option value="cairo">{{ language === 'en' ? 'Cairo, Egypt' : 'القاهرة، مصر' }}</option>
+                    <option value="dubai">{{ language === 'en' ? 'Dubai, UAE' : 'دبي، الإمارات' }}</option>
+                    <option value="custom">{{ language === 'en' ? 'Custom Location' : 'موقع مخصص' }}</option>
+                </select>
+                <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-500 dark:text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="selectedCity === 'custom' || selectedCity === 'auto'" class="grid grid-cols-2 gap-4">
+            <div class="group">
+                <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{{ language === 'en' ? 'Latitude' : 'خط العرض' }}</label>
+                <div class="relative">
+                    <input type="number" v-model="latitude" step="0.0001"
+                           class="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 focus:border-indigo-500 dark:focus:border-indigo-500 focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 transition-all duration-300">
+                    <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500 text-xs">°N</div>
+                </div>
+            </div>
+            <div class="group">
+                <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300">{{ language === 'en' ? 'Longitude' : 'خط الطول' }}</label>
+                <div class="relative">
+                    <input type="number" v-model="longitude" step="0.0001"
+                           class="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 focus:border-indigo-500 dark:focus:border-indigo-500 focus:outline-none bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 transition-all duration-300">
+                    <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500 text-xs">°E</div>
+                </div>
+            </div>
+        </div>
+        
+        <button @click="updateLocation" :disabled="isLoading"
+                class="w-full mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0">
+            <div class="flex items-center justify-center">
+                <span v-if="isLoading" class="inline-block animate-spin mr-2">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+                {{ isLoading ? (language === 'en' ? 'Updating...' : 'جارٍ التحديث...') : (language === 'en' ? 'Update Location' : 'تحديث الموقع') }}
+            </div>
+        </button>
+        
+        <div :class="{'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400': !isLoading && statusMessage && !statusMessage.includes('Error'),
+                    'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400': isLoading,
+                    'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400': !isLoading && statusMessage && statusMessage.includes('Error')}"
+             class="text-sm p-4 rounded-xl border mt-4 transition-all duration-300" v-if="statusMessage || isLoading">
+            <div class="flex items-center">
+                <svg v-if="!isLoading && statusMessage && !statusMessage.includes('Error')" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg v-if="!isLoading && statusMessage && statusMessage.includes('Error')" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span v-if="isLoading" class="inline-block animate-spin mr-2">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+                {{ language === 'en' ? statusMessage : statusMessageArabic }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Features Section -->
+    <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+        <h3 class="text-lg font-medium mb-4 text-slate-700 dark:text-slate-300">{{ language === 'en' ? 'Additional Features' : 'ميزات إضافية' }}</h3>
+        
+        <div class="space-y-3">
+            <div class="flex items-center">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" v-model="enableNotifications">
+                    <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                    <span class="ml-3 text-sm font-medium text-slate-700 dark:text-slate-300">{{ language === 'en' ? 'Enable Notifications' : 'تفعيل الإشعارات' }}</span>
+                </label>
+            </div>
+            
+            <div class="flex items-center">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" v-model="enableSounds">
+                    <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                    <span class="ml-3 text-sm font-medium text-slate-700 dark:text-slate-300">{{ language === 'en' ? 'Enable Prayer Sounds' : 'تفعيل أصوات الصلاة' }}</span>
+                </label>
+            </div>
+            
+            <div class="flex items-center">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" v-model="showSecondaryTimes">
+                                                <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                            <span class="ml-3 text-sm font-medium text-slate-700 dark:text-slate-300">{{ language === 'en' ? 'Show All Prayer Times' : 'عرض جميع أوقات الصلاة' }}</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Secondary Prayer Times (Conditionally Shown) -->
+                <div v-if="showSecondaryTimes" class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ language === 'en' ? 'Fajr' : 'الفجر' }}</h4>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ formatTime(prayerTimes.Fajr) || '--:--' }}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ language === 'en' ? 'Dhuhr' : 'الظهر' }}</h4>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ formatTime(prayerTimes.Dhuhr) || '--:--' }}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ language === 'en' ? 'Asr' : 'العصر' }}</h4>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ formatTime(prayerTimes.Asr) || '--:--' }}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ language === 'en' ? 'Maghrib' : 'المغرب' }}</h4>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ formatTime(prayerTimes.Maghrib) || '--:--' }}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ language === 'en' ? 'Isha' : 'العشاء' }}</h4>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ formatTime(prayerTimes.Isha) || '--:--' }}</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                        <h4 class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ language === 'en' ? 'Midnight' : 'منتصف الليل' }}</h4>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-medium">{{ formatTime(prayerTimes.Midnight) || '--:--' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quote of the Day -->
+    <div class="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 backdrop-blur-sm rounded-2xl shadow-md overflow-hidden p-6 border border-indigo-100 dark:border-indigo-800/50">
+        <div class="flex items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-500 dark:text-indigo-400 mr-4 shrink-0 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <div>
+                <h3 class="text-lg font-medium mb-3 text-indigo-700 dark:text-indigo-400">{{ language === 'en' ? 'Ramadan Quote of the Day' : 'حكمة رمضانية لليوم' }}</h3>
+                <p class="text-slate-600 dark:text-slate-300 italic">{{ language === 'en' ? dailyQuote.en : dailyQuote.ar }}</p>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">— {{ language === 'en' ? dailyQuote.source : dailyQuote.sourceAr }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400 py-4 border-t border-slate-200 dark:border-slate-800">
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-6">
+            <p>{{ language === 'en' ? 'Prayer times provided by Aladhan API' : 'أوقات الصلاة مقدمة من واجهة برمجة تطبيقات الأذان' }}</p>
+            <div class="hidden sm:block h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+            <p>{{ language === 'en' ? '© Ramadan Timer 2025' : '© مؤقت رمضان ٢٠٢٥' }}</p>
+        </div>
+    </footer>
+</div>
+
+<!-- Notification Panel (Hidden by default) -->
+<div class="fixed bottom-4 right-4 transition-all duration-300 transform translate-y-full opacity-0" :class="{'translate-y-0 opacity-100': showNotification}">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-4 max-w-xs border border-slate-200 dark:border-slate-700 flex items-start">
+        <div class="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-full mr-3 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div>
+            <h4 class="font-medium text-slate-800 dark:text-slate-200">{{ notificationTitle }}</h4>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ notificationMessage }}</p>
+        </div>
+    </div>
+</div>
+<script>
+    const { createApp, ref, computed, onMounted, watch, shallowRef } = Vue;
+
+    createApp({
+        setup() {
+            const enableNotifications = ref(false);
+            const enableSounds = ref(false);
+            const showSecondaryTimes = ref(false);
+            const dailyQuote = ref('');
+            const language = ref('en');
+            const currentDay = ref(1);
+            const phaseName = ref('');
+            const currentDate = ref('');
+            const currentDateArabic = ref('');
+            const hijriDate = ref('');
+            const hijriDateArabic = ref('');
+            const countdownLabel = ref('Time until Iftar');
+            const countdownLabelArabic = ref('الوقت المتبقي حتى الإفطار');
+            const countdownTime = ref({ hours: '00', minutes: '00', seconds: '00' });
+            const progressPercentage = ref(0);
+            const prayerTimes = shallowRef({ suhoor: '04:30', iftar: '18:45' });
+            const fastDuration = ref('00:00');
+            const fastDurationArabic = ref('00:00');
+            const calculationMethod = ref('MAKKAH');
+            const selectedCity = ref('auto');
+            const latitude = ref(0);
+            const longitude = ref(0);
+            const isLoading = ref(false);
+            const statusMessage = ref('Ready to update');
+            const statusMessageArabic = ref('جاهز للتحديث');
+            const moonPhaseStyle = ref({ transform: 'rotate(0deg)' });
+            const hijriMonthData = ref(null);
+            const currentPeriod = ref(''); // 'pre-suhoor', 'fasting', or 'post-iftar'
+            const darkMode = ref(false);
+
+            // Add dark mode toggle function
+            const toggleDarkMode = () => {
+                darkMode.value = !darkMode.value;
+                if (darkMode.value) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                // Store preference in local storage
+                localStorage.setItem('darkMode', darkMode.value);
+            };
+
+            // Initialize dark mode based on system preference or saved preference
+            const initDarkMode = () => {
+                // Check for saved preference
+                const savedDarkMode = localStorage.getItem('darkMode');
+                if (savedDarkMode !== null) {
+                    darkMode.value = savedDarkMode === 'true';
+                } else {
+                    // Check system preference
+                    darkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+                
+                // Apply dark mode if needed
+                if (darkMode.value) {
+                    document.documentElement.classList.add('dark');
+                }
+            };
+
+            // Predefined city coordinates
+            const cities = {
+                alain: { lat: 24.1302, lng: 55.8023 },
+                mecca: { lat: 21.4225, lng: 39.8262 },
+                medina: { lat: 24.5247, lng: 39.5692 },
+                riyadh: { lat: 24.7136, lng: 46.6753 },
+                cairo: { lat: 30.0444, lng: 31.2357 },
+                dubai: { lat: 25.2048, lng: 55.2708 }
+            };
+
+            const toggleLanguage = () => {
+                language.value = language.value === 'en' ? 'ar' : 'en';
+            };
+
+            const handleCityChange = () => {
+                if (selectedCity.value === 'auto') {
+                    detectLocation();
+                } else if (selectedCity.value !== 'custom') {
+                    const city = cities[selectedCity.value];
+                    latitude.value = city.lat;
+                    longitude.value = city.lng;
+                }
+            };
+
+            const detectLocation = async () => {
+                if (navigator.geolocation) {
+                    isLoading.value = true;
+                    statusMessage.value = 'Detecting your location...';
+                    statusMessageArabic.value = 'جارٍ الكشف عن موقعك...';
+                    
+                    try {
+                        const position = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject);
+                        });
+                        
+                        latitude.value = position.coords.latitude;
+                        longitude.value = position.coords.longitude;
+                        
+                        await fetchPrayerTimes();
+                        await fetchHijriDate();
+                        
+                        statusMessage.value = 'Location detected successfully';
+                        statusMessageArabic.value = 'تم الكشف عن الموقع بنجاح';
+                    } catch (error) {
+                        console.error("Error getting location:", error);
+                        statusMessage.value = 'Could not detect location. Using default.';
+                        statusMessageArabic.value = 'تعذر الكشف عن الموقع. استخدام الافتراضي.';
+                        
+                        // Default to Mecca if geolocation fails
+                        latitude.value = cities.alain.lat;
+                        longitude.value = cities.alain.lng;
+                        selectedCity.value = 'alain';
+                        await fetchPrayerTimes();
+                        await fetchHijriDate();
+                    } finally {
+                        isLoading.value = false;
+                    }
+                } else {
+                    statusMessage.value = 'Geolocation not supported by your browser';
+                    statusMessageArabic.value = 'تحديد الموقع الجغرافي غير مدعوم من متصفحك';
+                }
+            };
+
+            const updateLocation = async () => {
+                isLoading.value = true;
+                try {
+                    await fetchPrayerTimes();
+                    await fetchHijriDate();
+                    statusMessage.value = 'Location updated successfully';
+                    statusMessageArabic.value = 'تم تحديث الموقع بنجاح';
+                } catch (error) {
+                    console.error("Error updating location:", error);
+                    statusMessage.value = 'Failed to update location. Please try again.';
+                    statusMessageArabic.value = 'فشل تحديث الموقع. يرجى المحاولة مرة أخرى.';
+                } finally {
+                    isLoading.value = false;
+                }
+            };
+
+            const fetchHijriDate = async () => {
+                try {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = today.getMonth() + 1;
+                    const day = today.getDate();
+                    
+                    const response = await fetch(`https://api.aladhan.com/v1/gToH?date=${day}-${month}-${year}`);
+                    const data = await response.json();
+                    
+                    if (data.code === 200 && data.data) {
+                        const hijri = data.data.hijri;
+                        hijriDate.value = `${hijri.month.en} ${hijri.day}, ${hijri.year} AH`;
+                        hijriDateArabic.value = `${hijri.day} ${hijri.month.ar}، ${convertToArabicNumerals(hijri.year)} هـ`;
+                        
+                        // Check if we're in Ramadan
+                        if (hijri.month.number === 9) {
+                            // Fetch Ramadan data for this year
+                            await fetchRamadanData(hijri.year);
+                            
+                            // Set current day of Ramadan
+                            currentDay.value = parseInt(hijri.day);
+                            calculateMoonPhase(parseInt(hijri.day));
+                        } else {
+                            // Not Ramadan - could handle differently
+                            currentDay.value = 1;
+                            calculateMoonPhase(1);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching Hijri date:", error);
+                }
+            };
+
+            const fetchRamadanData = async (hijriYear) => {
+                try {
+                    const response = await fetch(`https://api.aladhan.com/v1/hijriCalendarByYear/${hijriYear}?month=9`);
+                    const data = await response.json();
+                    
+                    if (data.code === 200 && data.data) {
+                        hijriMonthData.value = data.data;
+                    }
+                } catch (error) {
+                    console.error("Error fetching Ramadan data:", error);
+                }
+            };
+
+            const formatTime = (timeStr) => {
+                const time = timeStr.split(" ")[0]; // Remove timezone info
+                const [hours, minutes] = time.split(":");
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? "PM" : "AM";
+                const hour12 = hour % 12 || 12;
+                return `${hour12}:${minutes} ${ampm}`;
+            };
+
+            const fetchPrayerTimes = async () => {
+                try {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = today.getMonth() + 1;
+                    const day = today.getDate();
+                    
+                    // Fetch prayer times using Aladhan API
+                    const response = await fetch(
+                        `https://api.aladhan.com/v1/timings/${day}-${month}-${year}?latitude=${latitude.value}&longitude=${longitude.value}&method=${calculationMethod.value}`
+                    );
+                    const data = await response.json();
+                    
+                    if (data.code === 200 && data.data) {
+                        const timings = data.data.timings;
+                        console.log(data.data.timings)
+                        // Use Fajr time as Suhoor end time (with 10 minutes buffer before)
+                        const fajrTime = timings.Fajr;
+                        
+                        const fajrHour = parseInt(fajrTime.split(':')[0]);
+                        const fajrMinute = parseInt(fajrTime.split(':')[1]);
+                        
+                        // Calculate 10 minutes before Fajr for Suhoor
+                        let suhoorMinute = fajrMinute - 10;
+                        let suhoorHour = fajrHour;
+                        
+                        if (suhoorMinute < 0) {
+                            suhoorMinute += 60;
+                            suhoorHour -= 1;
+                            if (suhoorHour < 0) suhoorHour += 24;
+                        }
+                        
+                                                    const suhoorTime = `${suhoorHour.toString().padStart(2, '0')}:${suhoorMinute.toString().padStart(2, '0')}`;
+                            
+                            // Use Maghrib time as Iftar time
+                            const iftarTime = timings.Maghrib;
+                            
+                            prayerTimes.value = {
+                                ...data.data.timings,
+                                suhoor: formatTime(suhoorTime),
+                                iftar: formatTime(iftarTime)
+                            };
+                            
+                            // Calculate fast duration
+                            const suhoorParts = suhoorTime.split(':');
+                            const iftarParts = iftarTime.split(':');
+                            
+                            const suhoorMinutes = parseInt(suhoorParts[0]) * 60 + parseInt(suhoorParts[1]);
+                            const iftarMinutes = parseInt(iftarParts[0]) * 60 + parseInt(iftarParts[1]);
+                            
+                            let fastMinutes = iftarMinutes - suhoorMinutes;
+                            if (fastMinutes < 0) fastMinutes += 24 * 60;
+                            
+                            const fastHours = Math.floor(fastMinutes / 60);
+                            const fastMins = fastMinutes % 60;
+                            
+                            fastDuration.value = `${fastHours}h ${fastMins}m`;
+                            fastDurationArabic.value = `${fastHours} ساعة ${fastMins} دقيقة`;
+                        }
+                    } catch (error) {
+                        console.error("Error fetching prayer times:", error);
+                        
+                        // Fallback to defaults if API fails
+                        prayerTimes.value = {
+                            suhoor: '04:30',
+                            iftar: '18:45'
+                        };
+                        
+                        fastDuration.value = '14h 15m';
+                        fastDurationArabic.value = '١٤ ساعة ١٥ دقيقة';
+                    }
+                };
+
+const moonPhaseStylex=computed(() => {
+    const phase = currentDay.value / 29.5; // 0 to 1 representing the lunar cycle
+    let clipPath;
+    
+    if (phase <= 0.5) {
+      // New moon (0) to full moon (0.5)
+      const angle = phase * 2 * 180; // 0 to 180 degrees
+      clipPath = `polygon(0 0, ${50 - 50 * Math.cos(angle * Math.PI / 180)}% 0, ${50 - 50 * Math.cos(angle * Math.PI / 180)}% 100%, 0 100%)`;
+    } else {
+      // Full moon (0.5) to new moon (1.0)
+      const angle = (phase - 0.5) * 2 * 180; // 0 to 180 degrees
+      clipPath = `polygon(100% 0, 100% 100%, ${50 + 50 * Math.cos(angle * Math.PI / 180)}% 100%, ${50 + 50 * Math.cos(angle * Math.PI / 180)}% 0)`;
+    }
+    
+    return {
+      clipPath: clipPath
+    };
+  });
+                const calculateMoonPhase = (dayOfRamadan) => {
+                    // More accurate moon phase calculation based on the day of Ramadan
+                    // Ramadan is 29 or 30 days, with new moon at start and end
+                    
+                    if (dayOfRamadan <= 14) {
+                        phaseName.value = language.value === 'en' ? 'Waxing Crescent' : 'هلال متزايد';
+                        const rotationDegree = (dayOfRamadan / 14) * 180;
+                        moonPhaseStyle.value = { transform: `rotate(${rotationDegree}deg)` };
+                    } else {
+                        phaseName.value = language.value === 'en' ? 'Waning Crescent' : 'هلال متناقص';
+                        const rotationDegree = ((dayOfRamadan - 14) / 15.5) * 180;
+                        //moonPhaseStyle.value = { transform: `rotate(${180 + rotationDegree}deg)` };
+                    }
+                };
+
+                const updateDateTime = () => {
+                    const now = new Date();
+                    
+                    // Format Gregorian date
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    currentDate.value = now.toLocaleDateString('en-US', options);
+                    currentDateArabic.value = now.toLocaleDateString('ar-SA', options);
+                    
+                    updateCountdown();
+                };
+
+                const updateCountdown = () => {
+                    const now = new Date();
+                    const hours = now.getHours();
+                    const minutes = now.getMinutes();
+                    const seconds = now.getSeconds();
+                    
+                    // Convert times to minutes since midnight
+                    const currentMinutes = hours * 60 + minutes;
+                    
+                    // Parse prayer times
+                    const iftarParts = prayerTimes.value.iftar.split(':');
+                    const iftarMinutes = parseInt(iftarParts[0]) * 60 + parseInt(iftarParts[1]);
+                    
+                    const suhoorParts = prayerTimes.value.suhoor.split(':');
+                    const suhoorMinutes = parseInt(suhoorParts[0]) * 60 + parseInt(suhoorParts[1]);
+                    
+                    // Calculate next day's suhoor time for post-iftar countdown
+                    const nextSuhoorMinutes = suhoorMinutes + (24 * 60);
+                    
+                    let timeUntilEvent = 0;
+                    
+                    // Determine current period and closest event
+                    if (currentMinutes < suhoorMinutes) {
+                        // Before suhoor
+                        currentPeriod.value = 'pre-suhoor';
+                        timeUntilEvent = suhoorMinutes - currentMinutes;
+                        countdownLabel.value = 'Time until Imsak';
+                        countdownLabelArabic.value = 'الوقت المتبقي حتى الأمساك';
+                        
+                        // Progress for approaching suhoor
+                        progressPercentage.value = Math.min(100, Math.max(0, 
+                            Math.round(((24 * 60 - iftarMinutes + currentMinutes) / (24 * 60 - iftarMinutes + suhoorMinutes)) * 100)
+                        ));
+                        
+                    } else if (currentMinutes < iftarMinutes) {
+                        // During fasting period
+                        currentPeriod.value = 'fasting';
+                        timeUntilEvent = iftarMinutes - currentMinutes;
+                        countdownLabel.value = 'Time until Iftar';
+                        countdownLabelArabic.value = 'الوقت المتبقي حتى الإفطار';
+                        
+                        // Progress toward iftar
+                        const totalFastingTime = iftarMinutes - suhoorMinutes;
+                        const timePassed = currentMinutes - suhoorMinutes;
+                        progressPercentage.value = Math.min(100, Math.max(0, Math.round((timePassed / totalFastingTime) * 100)));
+                        
+                    } else {
+                        // After iftar, counting to next day's suhoor
+                        currentPeriod.value = 'post-iftar';
+                        timeUntilEvent = nextSuhoorMinutes - currentMinutes;
+                        countdownLabel.value = 'Time until Imsak';
+                        countdownLabelArabic.value = 'الوقت المتبقي حتى الأمساك';
+                        
+                        // Progress toward next suhoor
+                        const totalTimeUntilSuhoor = nextSuhoorMinutes - iftarMinutes;
+                        const timePassed = currentMinutes - iftarMinutes;
+                        progressPercentage.value = Math.min(100, Math.max(0, Math.round((timePassed / totalTimeUntilSuhoor) * 100)));
+                    }
+                    
+                    // Calculate countdown display values
+                    const countdownHours = Math.floor(timeUntilEvent / 60);
+                    const countdownMinutes = Math.floor(timeUntilEvent % 60);
+                    
+                    countdownTime.value = {
+                        hours: countdownHours.toString().padStart(2, '0'),
+                        minutes: countdownMinutes.toString().padStart(2, '0'),
+                        seconds: (59 - seconds).toString().padStart(2, '0')
+                    };
+                };
+
+                // Helper function to convert numbers to Arabic numerals
+                const convertToArabicNumerals = (num) => {
+                    const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                    return num.toString().split('').map(digit => 
+                        !isNaN(parseInt(digit)) ? arabicNumerals[parseInt(digit)] : digit
+                    ).join('');
+                };
+
+                onMounted(() => {
+                    initDarkMode();
+                    detectLocation();
+                    updateDateTime();
+                    
+                    // Set up timers
+                    setInterval(updateDateTime, 60000); // Update date every minute
+                    setInterval(updateCountdown, 1000); // Update countdown every second
+                    
+                    // Listen for system dark mode changes
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                        if (event.matches) {
+                            darkMode.value = true;
+                            document.documentElement.classList.add('dark');
+                        } else {
+                            darkMode.value = false;
+                            document.documentElement.classList.remove('dark');
+                        }
+                        localStorage.setItem('darkMode', darkMode.value);
+                    });
+                });
+
+                // Update moon phase language when language changes
+                watch(language, () => {
+                    calculateMoonPhase(currentDay.value);
+                });
+
+                // Get progress bar color based on current period
+                const progressBarColor = computed(() => {
+                    const baseColors = {
+                        'pre-suhoor': {
+                            light: 'from-blue-500 to-indigo-600',
+                            dark: 'from-blue-400 to-indigo-500'
+                        },
+                        'fasting': {
+                            light: 'from-indigo-600 to-purple-600',
+                            dark: 'from-indigo-500 to-purple-500'
+                        },
+                        'post-iftar': {
+                            light: 'from-purple-600 to-blue-500',
+                            dark: 'from-purple-500 to-blue-400'
+                        },
+                        'default': {
+                            light: 'from-indigo-500 to-purple-500',
+                            dark: 'from-indigo-400 to-purple-400'
+                        }
+                    };
+                    
+                    const colorSet = baseColors[currentPeriod.value] || baseColors.default;
+                    return darkMode.value ? colorSet.dark : colorSet.light;
+                });
+
+                return {
+                    language,
+                    darkMode,
+                    currentDay,
+                    phaseName,
+                    currentDate,
+                    currentDateArabic,
+                    hijriDate,
+                    hijriDateArabic,
+                    countdownLabel,
+                    countdownLabelArabic,
+                    countdownTime,
+                    progressPercentage,
+                    progressBarColor,
+                    prayerTimes,
+                    fastDuration,
+                    fastDurationArabic,
+                    calculationMethod,
+                    selectedCity,
+                    latitude,
+                    longitude,
+                    isLoading,
+                    statusMessage,
+                    statusMessageArabic,
+                    moonPhaseStyle,
+                    currentPeriod,
+                    toggleLanguage,
+                    toggleDarkMode,
+                    handleCityChange,
+                    updateLocation,
+                    enableNotifications,
+                    enableSounds,
+                    showSecondaryTimes,
+                    dailyQuote,
+                    formatTime,
+                    moonPhaseStylex
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
