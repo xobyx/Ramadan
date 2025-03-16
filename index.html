@@ -61,9 +61,39 @@
             100% { box-shadow: 0 0 5px rgba(129, 140, 248, 0.5); }
         }
         
-        .moon-glow {
-            animation: glow 4s infinite;
-        }
+        /* Enhanced Moon Phase Styles */
+.moon-glow {
+  animation: moonGlow 4s infinite;
+  box-shadow: 0 0 15px rgba(129, 140, 248, 0.3);
+}
+
+@keyframes moonGlow {
+  0% { 
+    box-shadow: 0 0 15px rgba(129, 140, 248, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 25px rgba(129, 140, 248, 0.5),
+                0 0 35px rgba(129, 140, 248, 0.2);
+  }
+  100% { 
+    box-shadow: 0 0 15px rgba(129, 140, 248, 0.3);
+  }
+}
+
+/* Smooth transitions for phase changes */
+.moon-phase-transition {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark mode specific adjustments */
+.dark .moon-glow {
+  box-shadow: 0 0 15px rgba(129, 140, 248, 0.4);
+}
+
+/* Enhanced visibility for phase text */
+.phase-label {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
         
         /* Custom scrollbar */
         ::-webkit-scrollbar {
@@ -100,11 +130,7 @@
     <div id="app" class="max-w-6xl mx-auto p-4 md:p-6">
         <header class="flex justify-between items-center mb-6 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-xl shadow-sm p-4">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                </div>
+            
                 <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-purple-600 dark:from-indigo-400 dark:to-purple-500 bg-clip-text text-transparent">{{ language === 'en' ? 'Ramadan Timer' : 'مؤقت رمضان' }}</h1>
             </div>
             <div class="flex gap-3">
@@ -122,18 +148,34 @@
             <div class="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-slate-200 dark:border-slate-700">
                 <!-- Moon Phase -->
                 <div class="bg-gradient-to-r from-indigo-500 to-purple-600  p-8 flex flex-col items-center relative overflow-hidden">
-                    <!-- Decorative elements -->
-                    <div class="relative w-28 h-28 mb-5 moon-glow rounded-full">
-  <!-- Light side of moon (always visible) -->
-  <div class="w-28 h-28 rounded-full bg-gradient-to-r from-slate-100 to-white dark:from-slate-300 dark:to-white absolute"></div>
+                    <!-- Moon Phase Component - Enhanced Version -->
+<div class="relative w-28 h-28 mb-5 moon-glow rounded-full">
+  <!-- Base moon circle with realistic texture -->
+  <div class="absolute inset-0 w-28 h-28 rounded-full bg-gradient-to-r from-slate-100 to-white dark:from-slate-300 dark:to-white overflow-hidden">
+    <!-- Realistic moon texture overlay -->
+    <div class="absolute inset-0 opacity-20 dark:opacity-30 bg-cover bg-center"
+         style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/FullMoon2010.jpg/800px-FullMoon2010.jpg');">
+    </div>
+  </div>
   
-  <!-- Dark overlay with animated clip path -->
-  <div class="absolute inset-0 w-28 h-28 bg-indigo-900 dark:bg-slate-900 rounded-full" 
-       :style="moonPhaseStylex"></div>
+  <!-- Dynamic moon phase mask -->
+  <div class="absolute inset-0 w-28 h-28 bg-indigo-900/95 dark:bg-slate-900/95 rounded-full moon-phase-transition"
+       :style="moonPhaseStyle">
+    <!-- Subtle shadow gradient for depth -->
+    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent dark:via-black/20 rounded-full">
+    </div>
+  </div>
   
-  <!-- Subtle crater details -->
-  <div class="absolute inset-0 w-28 h-28 rounded-full opacity-10 dark:opacity-20" 
-       style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/FullMoon2010.jpg/800px-FullMoon2010.jpg'); background-size: cover;"></div>
+  <!-- Illumination effect -->
+  <div class="absolute inset-0 w-28 h-28 rounded-full opacity-30"
+       :style="illuminationStyle">
+    <div class="absolute inset-0 bg-gradient-to-r from-indigo-400/30 to-transparent dark:from-indigo-300/30 rounded-full"></div>
+  </div>
+  
+  <!-- Phase indicator label -->
+  <div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-sm font-medium text-indigo-600 dark:text-indigo-400 whitespace-nowrap phase-label">
+    {{ phaseName }}
+  </div>
 </div>
                 </div>
 
@@ -182,7 +224,7 @@
                                 </svg>
                                 <h3 class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ language === 'en' ? 'Imsk Time' : 'وقت السحور' }}</h3>
                             </div>
-                            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ prayerTimes.suhoor }}</div>
+                            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ formatTime(prayerTimes.suhoor )}}</div>
                         </div>
                         <div class="bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 transition-all duration-300 hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900">
                             <div class="flex items-center justify-center mb-2">
@@ -191,7 +233,7 @@
                                 </svg>
                                 <h3 class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ language === 'en' ? 'Iftar Time' : 'وقت الإفطار' }}</h3>
                             </div>
-                            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ prayerTimes.iftar }}</div>
+                            <div class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">{{ formatTime(prayerTimes.iftar )}}</div>
                         </div>
                     </div>
                     
@@ -392,7 +434,7 @@
         <div class="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-6">
             <p>{{ language === 'en' ? 'Prayer times provided by Aladhan API' : 'أوقات الصلاة مقدمة من واجهة برمجة تطبيقات الأذان' }}</p>
             <div class="hidden sm:block h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700"></div>
-            <p>{{ language === 'en' ? '© Ramadan Timer 2025' : '© مؤقت رمضان ٢٠٢٥' }}</p>
+            <p>{{ language === 'en' ? '© Ramadan Timer 2025 By Oby Majid' : 'مؤقت رمضان © ،أبي ماجد ٢٠٢٥' }}</p>
         </div>
     </footer>
 </div>
@@ -419,7 +461,7 @@
             const enableNotifications = ref(false);
             const enableSounds = ref(false);
             const showSecondaryTimes = ref(false);
-            const dailyQuote = ref('');
+            const dailyQuote = ref({source:"Thank God",sourceAr:"الحمد لله"});
             const language = ref('en');
             const currentDay = ref(1);
             const phaseName = ref('');
@@ -441,7 +483,7 @@
             const isLoading = ref(false);
             const statusMessage = ref('Ready to update');
             const statusMessageArabic = ref('جاهز للتحديث');
-            const moonPhaseStyle = ref({ transform: 'rotate(0deg)' });
+            const _moonPhaseStyle = ref({ transform: 'rotate(0deg)' });
             const hijriMonthData = ref(null);
             const currentPeriod = ref(''); // 'pre-suhoor', 'fasting', or 'post-iftar'
             const darkMode = ref(false);
@@ -649,8 +691,8 @@
                             
                             prayerTimes.value = {
                                 ...data.data.timings,
-                                suhoor: formatTime(suhoorTime),
-                                iftar: formatTime(iftarTime)
+                                suhoor: (suhoorTime),
+                                iftar: (iftarTime)
                             };
                             
                             // Calculate fast duration
@@ -701,7 +743,7 @@ const moonPhaseStylex=computed(() => {
       clipPath: clipPath
     };
   });
-                const calculateMoonPhase = (dayOfRamadan) => {
+                const _calculateMoonPhase = (dayOfRamadan) => {
                     // More accurate moon phase calculation based on the day of Ramadan
                     // Ramadan is 29 or 30 days, with new moon at start and end
                     
@@ -831,7 +873,50 @@ const moonPhaseStylex=computed(() => {
                 watch(language, () => {
                     calculateMoonPhase(currentDay.value);
                 });
+const moonPhaseStyle = computed(() => {
+      const phase = currentDay.value / 29.5; // Lunar cycle normalized to 0-1
+      const angle = phase * 360; // Convert to degrees
+      
+      // Enhanced phase calculation
+      if (phase <= 0.5) {
+        // Waxing phase (new moon to full moon)
+        const x = 50 - 50 * Math.cos(angle * Math.PI / 180);
+        return {
+          clipPath: `polygon(
+            0 0, 
+            ${x}% 0, 
+            ${x}% 100%, 
+            0 100%
+          )`,
+          transform: `rotate(${angle}deg)`
+        };
+      } else {
+        // Waning phase (full moon to new moon)
+        const x = 50 + 50 * Math.cos((angle - 180) * Math.PI / 180);
+        return {
+          clipPath: `polygon(
+            100% 0, 
+            ${x}% 0, 
+            ${x}% 100%, 
+            100% 100%
+          )`,
+          transform: `rotate(${angle}deg)`
+        };
+      }
+    });
 
+    const illuminationStyle = computed(() => {
+      const phase = currentDay.value / 29.5;
+      const intensity = Math.sin(phase * Math.PI) * 100;
+      
+      return {
+        background: `radial-gradient(
+          circle at ${phase <= 0.5 ? 'right' : 'left'}, 
+          rgba(129, 140, 248, ${intensity}%) 0%,
+          transparent 70%
+        )`
+      };
+    });
                 // Get progress bar color based on current period
                 const progressBarColor = computed(() => {
                     const baseColors = {
@@ -856,7 +941,40 @@ const moonPhaseStylex=computed(() => {
                     const colorSet = baseColors[currentPeriod.value] || baseColors.default;
                     return darkMode.value ? colorSet.dark : colorSet.light;
                 });
+                const _illuminationStyle = computed(() => {
+  const phase = currentDay.value / 29.5;
+  const intensity = Math.sin(phase * Math.PI) * 100;
+  
+  return {
+    background: `radial-gradient(
+      circle at ${phase <= 0.5 ? 'right' : 'left'}, 
+      rgba(129, 140, 248, ${intensity}%) 0%,
+      transparent 70%
+    )`
+  };
+});
 
+// Enhanced moon phase calculation function
+const calculateMoonPhase = (dayOfRamadan) => {
+  const phases = {
+    en: [
+      'New Moon', 'Waxing Crescent', 'First Quarter',
+      'Waxing Gibbous', 'Full Moon', 'Waning Gibbous',
+      'Last Quarter', 'Waning Crescent'
+    ],
+    ar: [
+      'المحاق', 'الهلال المتزايد', 'التربيع الأول',
+      'الأحدب المتزايد', 'البدر', 'الأحدب المتناقص',
+      'التربيع الآخر', 'الهلال المتناقص'
+    ]
+  };
+
+  const phase = (dayOfRamadan - 1) / 29.5 * 8;
+  const phaseIndex = Math.floor(phase % 8);
+  phaseName.value = language.value === 'en' 
+    ? phases.en[phaseIndex]
+    : phases.ar[phaseIndex];
+};
                 return {
                     language,
                     darkMode,
@@ -892,7 +1010,10 @@ const moonPhaseStylex=computed(() => {
                     showSecondaryTimes,
                     dailyQuote,
                     formatTime,
-                    moonPhaseStylex
+                    moonPhaseStyle,
+  illuminationStyle,
+  calculateMoonPhase,
+  moonPhaseStylex,
                 };
             }
         }).mount('#app');
