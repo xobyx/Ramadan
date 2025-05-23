@@ -15,11 +15,12 @@
     <script>
         tailwind.config = {
             darkMode: 'class', // Class-based dark mode
+            /*
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Rubik', 'sans-serif'],
-                        arabic: ['Noto Sans Arabic', 'serif']
+                        //sans: ['Rubik', 'sans-serif'],
+                        //arabic: ['Noto Sans Arabic', 'serif']
                     },
                     colors: {
                         primary: {
@@ -32,6 +33,7 @@
                     }
                 }
             }
+            */
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.min.js"></script>
@@ -49,9 +51,11 @@
             font-weight: normal;
             font-style: normal;
         }
+        
         .font-arabic {
             font-family: 'Amiri', 'Noto Sans Arabic', serif;
         }
+        
         .rtl {
             direction: rtl;
         }
@@ -71,12 +75,12 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        /*
+        
         .dark .glass {
             background: rgba(30, 41, 59, 0.4);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        */
+        
         /* Custom animation for moon phases */
         @keyframes glow {
             0% { box-shadow: 0 0 5px rgba(129, 140, 248, 0.5); }
